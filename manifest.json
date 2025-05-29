@@ -1,0 +1,43 @@
+{
+  "name": "AI Sidebar",
+  "description": "A resizable sidebar that chats with the OpenAI API",
+  "version": "1.0.0",
+  "manifest_version": 3,
+
+
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://api.openai.com/*"
+  ],
+
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["sidebar.css"]
+    }
+  ],
+
+ 
+  "web_accessible_resources": [
+    {
+      "resources": ["sidebar.html", "sidebar.js", "sidebar.css"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+
+
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+
+
+  "action": {
+    "default_title": "Open AI Sidebar"
+  }
+}

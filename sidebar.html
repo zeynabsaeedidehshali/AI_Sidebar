@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Sidebar</title>
+  <link rel="stylesheet" href="sidebar.css" />
+</head>
+<body>
+  <!-- Header -->
+  <div id="chat-header">AI Sidebar</div>
+
+  <!-- Chat history -->
+  <div id="chat-log"></div>
+
+  <!-- Yellow toolbar with paper-clip icon -->
+  <div id="chat-toolbar">
+    <span id="upload-icon" class="toolbar-icon" title="Attach PDF">📎</span>
+    <span id="upload-status" class="upload-status"></span>
+  </div>
+
+  <!-- Input area -->
+  <form id="chat-form">
+    <textarea id="chat-input" placeholder="Ask me anything…"></textarea>
+    <button id="chat-send" type="submit">Send</button>
+  </form>
+
+  <script src="sidebar.js"></script>
+</body>
+</html>
