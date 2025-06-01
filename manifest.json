@@ -1,43 +1,50 @@
 {
   "name": "AI Sidebar",
-  "description": "A resizable sidebar that chats with the OpenAI API",
+  "description": "Resizable AI sidebar with PDF-aware chat + region capture",
   "version": "1.0.0",
   "manifest_version": 3,
 
 
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "tabs"
   ],
+
+
   "host_permissions": [
+    "<all_urls>",
     "https://api.openai.com/*"
   ],
 
+  "background": { "service_worker": "background.js" },
 
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["sidebar.css"]
-    }
-  ],
 
- 
-  "web_accessible_resources": [
-    {
-      "resources": ["sidebar.html", "sidebar.js", "sidebar.css"],
-      "matches": ["<all_urls>"]
-    }
-  ],
+  "content_scripts": [{
+    "matches": ["<all_urls>"],
+    "js": ["content.js"],
+    "css": ["sidebar.css"]
+  }],
 
+
+  "web_accessible_resources": [{
+    "resources": [
+      "sidebar.html",
+      "sidebar.js",
+      "sidebar.css",
+      "pdfjs/pdf.js",
+      "pdfjs/pdf.worker.js"
+    ],
+    "matches": ["<all_urls>"]
+  }],
 
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
   },
 
-
-  "action": {
-    "default_title": "Open AI Sidebar"
+ 
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src https://api.openai.com"
   }
 }

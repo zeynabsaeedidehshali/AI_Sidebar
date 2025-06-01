@@ -12,8 +12,12 @@
   <!-- Chat history -->
   <div id="chat-log"></div>
 
-  <!-- Yellow toolbar with paper-clip icon -->
+  <!-- Toolbar with 📷 camera icon and 📎 attachment icon -->
   <div id="chat-toolbar">
+    <!-- New camera icon (region capture) -->
+    <span id="camera-icon" class="toolbar-icon" title="Capture Region">📷</span>
+
+    <!-- Existing attachment icon (PDF upload) -->
     <span id="upload-icon" class="toolbar-icon" title="Attach PDF">📎</span>
     <span id="upload-status" class="upload-status"></span>
   </div>
@@ -24,6 +28,10 @@
     <button id="chat-send" type="submit">Send</button>
   </form>
 
+  <!-- Load UMD pdf.js bundle (attaches window.pdfjsLib) -->
+  <script src="pdfjs/pdf.js"></script>
+
+  <!-- Then load our sidebar logic -->
   <script src="sidebar.js"></script>
 </body>
 </html>
