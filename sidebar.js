@@ -1,65 +1,59 @@
 /******************************************************************
- * SIDEBAR.JS – chat UI with a compact, non-wrapping header:
- *  ▸ “AI Sidebar” title (14px)
- *  ▸ Model Selection dropdown (only multimodal models, 70px wide, 10px font)
- *  ▸ 🗑 New Chat button (11px font, tighter padding)
- *  ▸ ───────────────────────────────────────────────────────────────
- *  ▸ 📎 PDF upload (removable)
- *  ▸ 📷 Image capture (removable)
- *  ▸ Chat form below, sending to the selected model
+ * SIDEBAR.JS – chat UI for the AI Sidebar Extension (Heatwave v8)
+ * Updated model‐list logic to match the uploaded reference file.
  ******************************************************************/
 
 /* ───────── DOM References ───────── */
 const $ = (id) => document.getElementById(id);
 const header       = $("chat-header");
-const toolbar      = $("chat-toolbar");
+const toolbar      = $("chat-toolbar");    // hidden via CSS
 const form         = $("chat-form");
 const textarea     = $("chat-input");
 const chatLog      = $("chat-log");
-const uploadIcon   = $("upload-icon");   // 📎
+const uploadIcon   = $("upload-icon");     // 📎
 const uploadStatus = $("upload-status");
-const cameraIcon   = $("camera-icon");   // 📷
+const cameraIcon   = $("camera-icon");     // 📷
 
 /* ───────── Build Compact Header Layout ───────── */
-// Clear any existing header content:
+// Clear existing header content:
 header.innerHTML = "";
 
-// Container for title + dropdown (left side):
+// Container for title + dropdown:
 const leftContainer = document.createElement("div");
 Object.assign(leftContainer.style, {
-  display:       "flex",
-  alignItems:    "center",
-  flex:          "1 1 auto",
-  flexWrap:      "nowrap",   // prevent wrapping
-  minWidth:      "0",        // allow children to shrink
+  display:    "flex",
+  alignItems: "center",
+  flex:       "1 1 auto",
+  flexWrap:   "nowrap",
+  minWidth:   "0",
 });
 
-// 1. Compact “AI Sidebar” title:
+// 1. “AI Sidebar” title:
 const titleSpan = document.createElement("span");
 titleSpan.textContent = "AI Sidebar";
 Object.assign(titleSpan.style, {
-  fontSize:      "14px",
-  fontWeight:    "600",
-  marginRight:   "6px",       // reduced margin
-  flex:          "0 1 auto",  // shrink if needed
-  whiteSpace:    "nowrap",
+  fontSize:   "14px",
+  fontWeight: "600",
+  marginRight:"6px",
+  flex:       "0 1 auto",
+  whiteSpace: "nowrap",
 });
 leftContainer.appendChild(titleSpan);
 
-// 2. Compact Model Selection dropdown (initially “Loading…”):
+// 2. Model‐Select dropdown:
 const modelSelect = document.createElement("select");
 modelSelect.id = "model-select";
 modelSelect.disabled = true;
 Object.assign(modelSelect.style, {
-  padding:       "1px 3px",
-  borderRadius:  "4px",
-  border:        "1px solid #ccc",
-  fontSize:      "10px",
-  width:         "70px",      // narrower
-  flex:          "0 1 70px",
-  minWidth:      "50px",      // never shrink below 50px
-  whiteSpace:    "nowrap",
-  marginRight:   "6px",       // small gap to New Chat
+  padding:      "1px 3px",
+  borderRadius: "4px",
+  border:       "1px solid #ccc",
+  fontSize:     "10px",
+  width:        "70px",
+  flex:         "0 1 70px",
+  minWidth:     "50px",
+  whiteSpace:   "nowrap",
+  marginRight:  "6px",
 });
 const loadingOption = document.createElement("option");
 loadingOption.value = "";
@@ -67,22 +61,21 @@ loadingOption.textContent = "Loading...";
 modelSelect.appendChild(loadingOption);
 leftContainer.appendChild(modelSelect);
 
-// Add leftContainer into header:
 header.appendChild(leftContainer);
 
-// 3. Compact New Chat button (far right):
+// 3. “🗑 New” button:
 const newBtn = document.createElement("span");
 newBtn.id = "new-btn";
 newBtn.textContent = "🗑 New";
 Object.assign(newBtn.style, {
-  fontSize:      "11px",
-  background:    "#f44336",
-  color:         "#fff",
-  padding:       "1px 4px",   // tighter padding
-  borderRadius:  "4px",
-  cursor:        "pointer",
-  flex:          "0 0 auto",
-  whiteSpace:    "nowrap",
+  fontSize:     "11px",
+  background:   "#f44336",
+  color:        "#fff",
+  padding:      "1px 4px",
+  borderRadius: "4px",
+  cursor:       "pointer",
+  flex:         "0 0 auto",
+  whiteSpace:   "nowrap",
 });
 header.appendChild(newBtn);
 
@@ -90,94 +83,103 @@ header.appendChild(newBtn);
 const imgStatus = document.createElement("span");
 imgStatus.id = "img-status";
 Object.assign(imgStatus.style, {
-  fontSize:      "12px",
-  color:         "#555",
-  paddingLeft:   "6px",
-  whiteSpace:    "nowrap",
-  overflow:      "hidden",
-  textOverflow:  "ellipsis",
+  fontSize:     "12px",
+  color:        "#64748b",
+  paddingLeft:  "6px",
+  whiteSpace:   "nowrap",
+  overflow:     "hidden",
+  textOverflow: "ellipsis",
 });
 toolbar.appendChild(imgStatus);
 
+/* ───────── Move icons + status into chat form ───────── */
+(() => {
+  const iconRow = document.createElement("div");
+  iconRow.id = "icon-row";
+  iconRow.style.display = "flex";
+  iconRow.style.alignItems = "center";
+  iconRow.style.gap = "0.9rem";
+  iconRow.style.marginBottom = "6px";
+
+  cameraIcon.classList.add("toolbar-icon");
+  uploadIcon.classList.add("toolbar-icon");
+  iconRow.append(cameraIcon, uploadIcon, imgStatus, uploadStatus);
+
+  form.insertBefore(iconRow, textarea);
+
+  if (toolbar) toolbar.style.display = "none";
+})();
+
 /* ───────── Global Chat State ───────── */
-let currentModel = "";               // set after fetching model list
-let pdfName = null, pdfText = null;  // persistent PDF context
-let lastImg = null;                  // screenshot (stays until removed)
-const convo = [];                    // array of chat messages
+let currentModel = "";
+let pdfName = null, pdfText = null;
+let lastImg = null;
+const convo = [];
 
 /* ───────── “New Chat” Handler ───────── */
 newBtn.onclick = () => {
   convo.length = 0;
   chatLog.innerHTML = "";
-  pdfName = pdfText = null;
-  lastImg = null;
+  pdfName = pdfText = lastImg = null;
   uploadStatus.textContent = "";
   imgStatus.textContent = "";
+  uploadStatus.onclick = imgStatus.onclick = null;
   textarea.focus();
 };
 
-/* ───────── Receive “imageCaptured” from content.js ───────── */
+/* ───────── Receive “imageCaptured” ───────── */
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === "imageCaptured") {
     lastImg = msg.dataUrl;
-    imgStatus.innerHTML = 
-      `Image captured <span id="rm-img" style="cursor:pointer;color:red;padding-left:4px">✖</span>`;
-    document.getElementById("rm-img").onclick = () => {
+    imgStatus.textContent = "🖼️ image ready – click ✖ to remove";
+    imgStatus.style.cursor = "pointer";
+    imgStatus.onclick = () => {
       lastImg = null;
       imgStatus.textContent = "";
-      convo.push({
-        role:    "system",
-        name:    "image_revoke",
-        content:
-          "The user has removed the screenshot. Ignore that image and any information inferred from it."
-      });
+      imgStatus.style.cursor = "default";
+      convo.push({ role: "system", name: "image_revoke", content: "The user removed the screenshot." });
     };
     chrome.storage.local.set({ lastCapturedImage: lastImg });
   }
 });
 
-/* ───────── PDF Upload Handler (📎) ───────── */
+/* ───────── PDF Upload (📎) ───────── */
 uploadIcon.onclick = () => {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "application/pdf";
-  input.style.display = "none";
-
+  const input = Object.assign(document.createElement("input"), {
+    type:    "file",
+    accept:  "application/pdf",
+    style:   "display:none"
+  });
   input.onchange = () => {
     const file = input.files[0];
     if (!file) return;
-    uploadStatus.textContent = "⏳ reading…";
+    uploadStatus.textContent = "📄 reading…";
     const reader = new FileReader();
     reader.onload = async () => {
       try {
         pdfName = file.name;
         pdfText = await extractPdfText(reader.result);
-        uploadStatus.innerHTML =
-          `${pdfName}<span id="rm-pdf" style="cursor:pointer;color:red;padding-left:6px">✖</span>`;
-        document.getElementById("rm-pdf").onclick = () => {
+        uploadStatus.textContent = `${pdfName} ✖`;
+        uploadStatus.style.cursor = "pointer";
+        uploadStatus.onclick = () => {
           pdfName = pdfText = null;
           uploadStatus.textContent = "";
-          const idx = convo.findIndex(
-            (m) => m.role === "system" && m.name === "pdf"
-          );
-          if (idx !== -1) convo.splice(idx, 1);
+          uploadStatus.style.cursor = "default";
         };
-      } catch (err) {
+      } catch {
         uploadStatus.textContent = "❌ failed";
       }
     };
     reader.readAsArrayBuffer(file);
   };
-
   document.body.appendChild(input);
   input.click();
   input.remove();
 };
 
-/* ───────── Extract PDF Text (pdfjs-dist) ───────── */
+/* ───────── Extract PDF Text ───────── */
 async function extractPdfText(buffer) {
   const pdfjs = window.pdfjsLib;
-  if (!pdfjs || !pdfjs.getDocument) throw new Error("pdfjsLib not loaded");
   const doc = await pdfjs.getDocument({ data: buffer }).promise;
   let fullText = "";
   for (let i = 1; i <= doc.numPages; i++) {
@@ -188,7 +190,7 @@ async function extractPdfText(buffer) {
   return fullText.trim();
 }
 
-/* ───────── Trigger Region-Capture (📷) ───────── */
+/* ───────── Region Capture (📷) ───────── */
 cameraIcon.onclick = () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs[0]) {
@@ -197,7 +199,7 @@ cameraIcon.onclick = () => {
   });
 };
 
-/* ───────── Utility: Add a chat message to the log ───────── */
+/* ───────── Utility: Add Chat Message ───────── */
 function addMsg(role, text) {
   const div = document.createElement("div");
   div.className = role === "user" ? "msg user" : "msg assistant";
@@ -210,9 +212,7 @@ function addMsg(role, text) {
 function getApiKey() {
   return new Promise((resolve, reject) => {
     chrome.storage.sync.get("openai_api_key", (data) => {
-      if (data.openai_api_key) {
-        return resolve(data.openai_api_key);
-      }
+      if (data.openai_api_key) return resolve(data.openai_api_key);
       const key = prompt("Enter your OpenAI API key:");
       if (!key) return reject(new Error("API key required"));
       chrome.storage.sync.set({ openai_api_key: key }, (err) => {
@@ -223,7 +223,7 @@ function getApiKey() {
   });
 }
 
-/* ───────── Populate Models Dropdown ───────── */
+/* ───────── Populate Models Dropdown (updated) ───────── */
 async function populateModelsDropdown() {
   // Show “Loading…” placeholder:
   modelSelect.innerHTML = "";
@@ -247,8 +247,8 @@ async function populateModelsDropdown() {
     const data = await response.json();
     const allIds = data.data.map((m) => m.id);
 
-    /* Keep only multimodal text+image models:
-     *  • Exclude any containing “preview”
+    /* Filter only multimodal text+image models:
+     *  • Exclude IDs containing “preview”
      *  • Exclude any ending with “-YYYY-MM-DD”
      *  • Include only IDs starting with “o1”, “gpt-4o”, or containing “vision”
      */
@@ -258,11 +258,11 @@ async function populateModelsDropdown() {
       return /^(o1|gpt-4o)|vision/.test(id);
     });
 
-    // Group by “base” and select the latest version:
+    // Group by “base” and pick the latest version:
     const modelMap = {};
     filtered.forEach((id) => {
       const parts = id.split("-");
-      const last = parts[parts.length - 1];
+      const last  = parts[parts.length - 1];
       if (/^\d+$/.test(last)) {
         const base = parts.slice(0, -1).join("-");
         if (!modelMap[base] || last > modelMap[base].version) {
@@ -314,7 +314,6 @@ async function populateModelsDropdown() {
     }
   };
 }
-
 // Populate when the script loads:
 populateModelsDropdown();
 
@@ -324,7 +323,6 @@ form.addEventListener("submit", async (e) => {
   const prompt = textarea.value.trim();
   if (!prompt) return;
 
-  // Build user message; include image if still present:
   const userMsg = lastImg
     ? {
         role: "user",
@@ -343,8 +341,6 @@ form.addEventListener("submit", async (e) => {
 
   try {
     const key = await getApiKey();
-
-    // Attach PDF context once if present:
     if (pdfText && !convo.some((m) => m.role === "system" && m.name === "pdf")) {
       convo.unshift({
         role:    "system",
@@ -353,7 +349,6 @@ form.addEventListener("submit", async (e) => {
       });
     }
 
-    // Call OpenAI with the selected model:
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method:  "POST",
       headers: {
@@ -361,8 +356,8 @@ form.addEventListener("submit", async (e) => {
         "Authorization": `Bearer ${key}`
       },
       body: JSON.stringify({
-        model:    currentModel,
-        messages: convo,
+        model:       currentModel,
+        messages:    convo,
         temperature: 0.7,
         max_tokens:  4096
       })
@@ -383,9 +378,9 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-/* ───────── Inline CSS Styling ───────── */
-const style = document.createElement("style");
-style.textContent = `
+/* ───────── Inline CSS Fallback ───────── */
+const baseStyle = document.createElement("style");
+baseStyle.textContent = `
 html, body {
   margin: 0;
   height: 100%;
@@ -398,8 +393,8 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: nowrap;       /* never wrap items */
-  padding: 6px 8px;        /* reduced padding */
+  flex-wrap: nowrap;
+  padding: 6px 8px;
   background: #f5f5f5;
   border-bottom: 1px solid #ddd;
 }
@@ -409,6 +404,8 @@ html, body {
   border-radius: 4px;
   border: 1px solid #ccc;
   width: 70px;
+  background: #fff;
+  color: #000;
 }
 #chat-log {
   flex: 1 1 auto;
@@ -436,7 +433,7 @@ html, body {
   cursor: pointer;
   user-select: none;
 }
-#upload-status {
+#upload-status, #img-status {
   font-size: 12px;
   color: #555;
   padding-left: 4px;
@@ -444,14 +441,6 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-#img-status {
-  font-size: 12px;
-  color: #555;
-  padding-left: 6px;
-  max-width: 140px;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 #chat-form {
   flex: 0 0 auto;
@@ -485,7 +474,13 @@ html, body {
   background: #0057bf;
 }
 `;
-document.head.appendChild(style);
+document.head.appendChild(baseStyle);
 
-/* ───────── Auto-focus the textarea on load ───────── */
+/* ───────── Load external Heatwave CSS ───────── */
+const link = document.createElement("link");
+link.rel = "stylesheet";
+link.href = chrome.runtime.getURL("ui-enhancements.css");
+document.head.appendChild(link);
+
+/* ───────── Autofocus textarea on load ───────── */
 textarea.focus();
