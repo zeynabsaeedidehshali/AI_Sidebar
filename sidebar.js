@@ -98,12 +98,16 @@ toolbar.appendChild(imgStatus);
   iconRow.id = "icon-row";
   iconRow.style.display = "flex";
   iconRow.style.alignItems = "center";
-  iconRow.style.gap = "0.9rem";
   iconRow.style.marginBottom = "6px";
+  iconRow.style.gap = "4px"; // or "2px" to make icons closer
+
 
   cameraIcon.classList.add("toolbar-icon");
   uploadIcon.classList.add("toolbar-icon");
   iconRow.append(cameraIcon, uploadIcon, imgStatus, uploadStatus);
+  cameraIcon.style.marginRight = "2px";  // optional tweak
+  uploadIcon.style.marginLeft = "0px";   // remove any spacing
+
 
   form.insertBefore(iconRow, textarea);
 
